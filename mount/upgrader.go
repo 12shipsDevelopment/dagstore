@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -267,7 +268,7 @@ func (u *Upgrader) refetch(ctx context.Context, into *os.File) error {
 // one exists. It is the caller's responsibility to ensure the transient is
 // not in use. If the tracked transient is gone, this will reset the internal
 // state to "" (no transient) to enable recovery.
-func (u *Upgrader) DeleteTransient() error {
+func (u *Upgrader) DeleteTransient(force bool) error {
 	u.lk.Lock()
 	defer u.lk.Unlock()
 
@@ -278,17 +279,32 @@ func (u *Upgrader) DeleteTransient() error {
 
 	// refuse to delete the transient if it's not being managed by us (i.e. in
 	// our transients root directory).
-	if _, err := filepath.Rel(u.rootdir, u.path); err != nil {
+	skip := false
+	log.Debugf("octopus: u.rootdir=%v", u.rootdir)
+	if r, err := filepath.Rel(u.rootdir, u.path); err != nil {
 		log.Debugw("transient is not owned by us; nothing to remove", "shard", u.key)
+		skip = true
+	} else {
+		if strings.Contains(r, "../") {
+			log.Debugw("transient is not owned by us; nothing to remove: %v", "shard", u.key, r)
+			skip = true
+		}
+	}
+
+	log.Debugf("octopus: force=%v skip=%v", force, skip)
+	if !force && skip {
 		return nil
 	}
 
 	// remove the transient and clear it always, even if os.Remove
 	// returns an error. This allows us to recover from errors like the user
 	// deleting the transient we're currently tracking.
-	err := os.Remove(u.path)
-	u.path = ""
+	if !skip {
+		err := os.Remove(u.path)
+		log.Debugw("deleted existing transient", "shard", u.key, "path", u.path, "error", err)
+		return err
+	}
 	u.ready = false
-	log.Debugw("deleted existing transient", "shard", u.key, "path", u.path, "error", err)
-	return err
+	u.path = ""
+	return nil
 }

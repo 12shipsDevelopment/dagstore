@@ -52,7 +52,7 @@ func (d *DAGStore) gc(resCh chan *GCResult) {
 	for _, s := range reclaim {
 		// only read lock: we're not modifying state, and the mount has its own lock.
 		s.lk.RLock()
-		err := s.mount.DeleteTransient()
+		err := s.mount.DeleteTransient(false)
 		if err != nil {
 			log.Warnw("failed to delete transient", "shard", s.key, "error", err)
 		}
