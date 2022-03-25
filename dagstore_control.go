@@ -272,7 +272,7 @@ func (d *DAGStore) control() {
 			// attempt to delete the transient first; this can happen if the
 			// transient has been removed by hand. DeleteTransient resets the
 			// transient to "" always.
-			if err := s.mount.DeleteTransient(); err != nil {
+			if err := s.mount.DeleteTransient(true); err != nil {
 				log.Warnw("recovery: failed to delete transient", "shard", s.key, "error", err)
 			}
 
