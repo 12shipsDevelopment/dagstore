@@ -176,8 +176,8 @@ func (u *Upgrader) Info() Info {
 	return Info{
 		Kind:             KindLocal,
 		AccessSequential: true,
-		AccessSeek:       true,
-		AccessRandom:     true,
+		AccessSeek:       false,
+		AccessRandom:     false,
 	}
 }
 
